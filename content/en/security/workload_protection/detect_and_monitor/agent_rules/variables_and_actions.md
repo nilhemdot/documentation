@@ -149,7 +149,7 @@ Both approaches require [Remediation](/security/workload_protection/respond_and_
 
 ### Requirements
 
-- Enforcement must be enabled in the Agent configuration (`runtime_security.enforcement.enabled`). See [Advanced configuration](/security/workload_protection/getting_started/advanced_configuration).
+- Enforcement must be enabled in the Agent configuration (`runtime_security.enforcement.enabled`). See [Workload Protection Agent configuration](/security/workload_protection/workload_protection_agent_config).
 - Kill actions are rejected at policy load time if enforcement is globally disabled.
 - Supported signals include `SIGKILL`, `SIGTERM`, `SIGHUP`, `SIGINT`, and other standard POSIX signal names.
 

@@ -113,12 +113,12 @@ We've put together a testing playground for you to discover Workload Protection 
 
 Once you've been granted access to Active Protection, head over to the [Blocking threats proactively][4] page.
 
-## 5) (optional) Advanced agent configurations
+## 5) (optional) Workload Protection Agent configuration
 
-We've put together an [advanced agent configuration page][5] for power users to learn how to configure and tweak the agent to better fit your environment and needs.
+See the [Workload Protection Agent configuration][5] page for the list of `runtime_security_config` parameters.
 
 [1]: https://app.datadoghq.com/security/workload-protection/onboarding
 [2]: /security/workload_protection/troubleshooting/threats
 [3]: https://github.com/DataDog/datadog-security-playground
 [4]: /
-[5]: /security/workload_protection/getting_started/advanced_configuration
+[5]: /security/workload_protection/workload_protection_agent_config

@@ -8167,10 +8167,10 @@ menu:
       parent: workload_protection_getting_started
       identifier: workload_protection_getting_started_windows
       weight: 70
-    - name: Advanced configuration
-      url: security/workload_protection/getting_started/advanced_configuration
+    - name: Agent configuration
+      url: security/workload_protection/workload_protection_agent_config
       parent: workload_protection_getting_started
-      identifier: workload_protection_getting_started_advanced_configuration
+      identifier: workload_protection_agent_config
       weight: 80
     - name: Detect and Monitor
       url: security/workload_protection/detect_and_monitor

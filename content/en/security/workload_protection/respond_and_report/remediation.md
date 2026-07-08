@@ -5,9 +5,9 @@ further_reading:
 - link: "security/workload_protection/getting_started"
   tag: "Documentation"
   text: "Getting started with Workload Protection"
-- link: "security/workload_protection/getting_started/advanced_configuration"
+- link: "security/workload_protection/workload_protection_agent_config"
   tag: "Documentation"
-  text: "Workload Protection Agent advanced configuration"
+  text: "Workload Protection Agent configuration"
 ---
 
 Remediation in Workload Protection lets the Datadog Agent **enforce** follow-up actions directly from the [Workload Protection Signals][1]
@@ -91,7 +91,7 @@ The Agent supports the following **enforcement** action types for remediation wo
 
 - **Purpose:** **Revert** a previous isolation rule when it is removed from the policy that is applied to the host—traffic returns to the prior ruleset. This action is how isolation is undone programmatically.
 
-<div class="alert alert-warning">Misconfigured enforcement rules can disrupt workloads. Test remediation rules in non-production environments, keep expressions tightly scoped (for example to a specific process ID or cgroup), and use the safety mechanisms described in the <a href="/security/workload_protection/getting_started/advanced_configuration">advanced configuration</a> documentation unless Support advises otherwise.</div>
+<div class="alert alert-warning">Misconfigured enforcement rules can disrupt workloads. Test remediation rules in non-production environments, keep expressions tightly scoped (for example to a specific process ID or cgroup), and use the safety mechanisms described in the <a href="/security/workload_protection/workload_protection_agent_config">Workload Protection Agent configuration</a> documentation unless Support advises otherwise.</div>
 
 ## Action statuses
 
@@ -112,5 +112,5 @@ Additional statuses (such as `error`, `not_triggered`, or disarmer-related value
 [1]: /security/workload_protection/investigate_and_triage/security_signals
 [2]: /security/workload_protection/getting_started/
 [3]: /agent/remote_config/?tab=configurationyamlfile
-[4]: /security/workload_protection/getting_started/advanced_configuration
+[4]: /security/workload_protection/workload_protection_agent_config
 [5]: /security/workload_protection/getting_started/kubernetes
