@@ -1,5 +1,5 @@
 ---
-title: API Changelog
+title: Changelog
 type: api
 layout: changelog
 build:

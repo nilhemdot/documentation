@@ -27,19 +27,20 @@
 
 <div class="col-12 api-changelog py-3">
 
-  <h1>{{ .Title }}</h1>
+  <div class="api-intro-header d-flex flex-wrap align-items-start justify-content-between">
+    <h2 id="changelog">
+      <a href="#changelog">{{ .Title }}</a>
+    </h2>
+    {{ partial "api/api-copy-btn.html" . }}
+  </div>
 
   <p class="api-changelog-intro">
     The Datadog API uses date-based versioning to manage breaking changes.
     Specify the API version by sending a <code>DD-API-VERSION</code> header with a version date.
-    When no version header is provided, the <strong>default version</strong> is used.
   </p>
 
   <div class="api-changelog-note">
-    <span class="api-changelog-note-label">Note</span>
-    <strong>Non-versioned requests</strong> (those without a <code>DD-API-VERSION</code> header)
-    use the <strong>default version</strong> &mdash; the stable baseline from which all subsequent
-    versions are derived.
+    <strong>Note:</strong> Requests without a <code>DD-API-VERSION</code> header use the default version.
   </div>
 
   {{ if not $versions }}
@@ -85,12 +86,14 @@
         <section class="api-changelog-version {{ if .default }}api-changelog-version--default{{ end }}" data-version="{{ .date }}">
           <div class="api-changelog-version-header">
             <h2>{{ .date }}</h2>
-            {{ if .default }}
-              <span class="api-changelog-badge api-changelog-badge--default">Default</span>
-            {{ end }}
-            <span class="api-changelog-badge api-changelog-badge--breaking {{ if eq $breakingCount 0 }}d-none{{ end }}" data-breaking-badge>
-              {{ $breakingCount }} breaking {{ if eq $breakingCount 1 }}change{{ else }}changes{{ end }}
-            </span>
+            <div class="api-changelog-version-header-badges">
+              {{ if .default }}
+                <span class="api-changelog-badge api-changelog-badge--default">Default</span>
+              {{ end }}
+              <span class="api-changelog-badge api-changelog-badge--breaking {{ if eq $breakingCount 0 }}d-none{{ end }}" data-breaking-badge>
+                {{ $breakingCount }} breaking {{ if eq $breakingCount 1 }}change{{ else }}changes{{ end }}
+              </span>
+            </div>
           </div>
           <div class="api-changelog-entries">
             {{ range .entries }}
