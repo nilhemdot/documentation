@@ -1,0 +1,130 @@
+{{ define "api-main" }}
+
+{{ $dot := . }}
+{{ $versions := .Site.Data.api.changelog.versions | default (slice) }}
+
+{{ $typeMeta := dict
+  "breaking"    (dict "label" "Breaking"    "color" "danger")
+  "addition"    (dict "label" "Addition"    "color" "success")
+  "deprecation" (dict "label" "Deprecation" "color" "warning")
+}}
+
+{{/* Flatten all entries once so we can compute counts and the tag list. */}}
+{{ $allEntries := slice }}
+{{ range $versions }}
+  {{ range .entries }}
+    {{ $allEntries = append . $allEntries }}
+  {{ end }}
+{{ end }}
+
+{{ $allTags := slice }}
+{{ range $allEntries }}
+  {{ if not (in $allTags .tag) }}
+    {{ $allTags = append .tag $allTags }}
+  {{ end }}
+{{ end }}
+{{ $allTags = sort $allTags }}
+
+<div class="col-12 api-changelog py-3">
+
+  <nav class="api-changelog-breadcrumb" aria-label="breadcrumb">
+    <a href="{{ "/api/" | relLangURL }}">{{ i18n "overview" | default "Docs" }}</a>
+    <span aria-hidden="true">&rsaquo;</span>
+    <span>API Changelog</span>
+  </nav>
+
+  <h1>{{ .Title }}</h1>
+
+  <p class="api-changelog-intro">
+    The Datadog API uses date-based versioning to manage breaking changes.
+    Specify the API version by sending a <code>DD-API-VERSION</code> header with a version date.
+    When no version header is provided, the <strong>default version</strong> is used.
+  </p>
+
+  <div class="api-changelog-note">
+    <span class="api-changelog-note-label">Note</span>
+    <strong>Non-versioned requests</strong> (those without a <code>DD-API-VERSION</code> header)
+    use the <strong>default version</strong> &mdash; the stable baseline from which all subsequent
+    versions are derived.
+  </div>
+
+  {{ if not $versions }}
+    <div class="alert alert-info">
+      No versioning information found. Make sure <code>data/api/changelog.yaml</code> is populated.
+    </div>
+  {{ else }}
+
+    <div class="api-changelog-filterbar">
+      <div class="api-changelog-filter-group">
+        <span class="api-changelog-filter-label">Type</span>
+        {{ range $key, $meta := $typeMeta }}
+          {{ $count := len (where $allEntries "type" $key) }}
+          <button type="button"
+            class="api-changelog-chip api-changelog-chip--type is-active"
+            data-changelog-type="{{ $key }}"
+            data-color="{{ $meta.color }}">
+            <span class="api-changelog-chip-dot bg-{{ $meta.color }}"></span>{{ $meta.label }}
+            <span class="api-changelog-chip-count">{{ $count }}</span>
+          </button>
+        {{ end }}
+      </div>
+      <div class="api-changelog-filter-divider"></div>
+      <div class="api-changelog-filter-group">
+        <span class="api-changelog-filter-label">Tag</span>
+        <button type="button" class="api-changelog-chip api-changelog-chip--tag is-active" data-changelog-tag="all">All</button>
+        {{ range $allTags }}
+          <button type="button" class="api-changelog-chip api-changelog-chip--tag" data-changelog-tag="{{ . }}">{{ . }}</button>
+        {{ end }}
+      </div>
+    </div>
+
+    <div class="api-changelog-summary">
+      <span>Showing <strong id="api-changelog-shown-count">{{ len $allEntries }}</strong> changes across
+        <strong id="api-changelog-version-count">{{ len $versions }}</strong> versions</span>
+      <button type="button" id="api-changelog-clear-filters" class="api-changelog-clear d-none">Clear filters</button>
+    </div>
+
+    <div id="api-changelog-versions" class="api-changelog-timeline">
+      {{ range $versions }}
+        {{ $breakingCount := len (where .entries "type" "breaking") }}
+        <section class="api-changelog-version {{ if .default }}api-changelog-version--default{{ end }}" data-version="{{ .date }}">
+          <div class="api-changelog-version-header">
+            <h2>{{ .date }}</h2>
+            {{ if .default }}
+              <span class="api-changelog-badge api-changelog-badge--default">Default</span>
+            {{ end }}
+            <span class="api-changelog-badge api-changelog-badge--breaking {{ if eq $breakingCount 0 }}d-none{{ end }}" data-breaking-badge>
+              {{ $breakingCount }} breaking {{ if eq $breakingCount 1 }}change{{ else }}changes{{ end }}
+            </span>
+          </div>
+          <div class="api-changelog-entries">
+            {{ range .entries }}
+              {{ $meta := index $typeMeta .type }}
+              <article class="api-changelog-entry" data-type="{{ .type }}" data-tag="{{ .tag }}">
+                <span class="api-changelog-pill bg-{{ $meta.color }}">{{ $meta.label }}</span>
+                <div class="api-changelog-entry-body">
+                  <div class="api-changelog-entry-meta">
+                    <span class="api-changelog-tag">tag: <strong>{{ .tag }}</strong></span>
+                    <span class="api-changelog-method text-api-{{ .method }} bg-bg-api-{{ .method }}">{{ .method | upper }}</span>
+                    <code>{{ .path }}</code>
+                  </div>
+                  <p>{{ .description | markdownify }}</p>
+                </div>
+              </article>
+            {{ end }}
+          </div>
+        </section>
+      {{ end }}
+    </div>
+
+    <div id="api-changelog-empty-state" class="api-changelog-empty d-none">
+      <p class="api-changelog-empty-title">No changes match your filters</p>
+      <p class="api-changelog-empty-subtitle">Try removing a type or tag filter.</p>
+      <button type="button" class="api-changelog-clear" data-changelog-reset>Clear filters</button>
+    </div>
+
+  {{ end }}
+
+</div>
+
+{{ end }}
