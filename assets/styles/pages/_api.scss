@@ -317,22 +317,6 @@ $ddpurple: #632ca6;
 .api-changelog {
     max-width: 900px;
 
-    .api-changelog-breadcrumb {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-        color: $gray-darkish;
-        margin-bottom: 16px;
-
-        span:last-child {
-            color: $ddpurple;
-        }
-    }
-
     .api-changelog-intro {
         max-width: 720px;
         color: $gray-dark;
@@ -361,10 +345,15 @@ $ddpurple: #632ca6;
     }
 
     .api-changelog-filterbar {
-        position: sticky;
-        top: 0;
         z-index: 5;
         display: flex;
+
+        @include media-breakpoint-up(lg) {
+            position: sticky;
+            // Sits directly under the sticky .api-toolbar (top: 94px, height: 65px)
+            top: 159px;
+        }
+
         flex-wrap: wrap;
         align-items: center;
         gap: 20px;

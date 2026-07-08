@@ -1,8 +1,8 @@
 {{ define "api-main" }}
 
-{{ $dot := . }}
 {{ $versions := .Site.Data.api.changelog.versions | default (slice) }}
 
+{{ $typeOrder := slice "breaking" "addition" "deprecation" }}
 {{ $typeMeta := dict
   "breaking"    (dict "label" "Breaking"    "color" "danger")
   "addition"    (dict "label" "Addition"    "color" "success")
@@ -13,25 +13,19 @@
 {{ $allEntries := slice }}
 {{ range $versions }}
   {{ range .entries }}
-    {{ $allEntries = append . $allEntries }}
+    {{ $allEntries = $allEntries | append . }}
   {{ end }}
 {{ end }}
 
 {{ $allTags := slice }}
 {{ range $allEntries }}
   {{ if not (in $allTags .tag) }}
-    {{ $allTags = append .tag $allTags }}
+    {{ $allTags = $allTags | append .tag }}
   {{ end }}
 {{ end }}
 {{ $allTags = sort $allTags }}
 
 <div class="col-12 api-changelog py-3">
-
-  <nav class="api-changelog-breadcrumb" aria-label="breadcrumb">
-    <a href="{{ "/api/" | relLangURL }}">{{ i18n "overview" | default "Docs" }}</a>
-    <span aria-hidden="true">&rsaquo;</span>
-    <span>API Changelog</span>
-  </nav>
 
   <h1>{{ .Title }}</h1>
 
@@ -57,7 +51,8 @@
     <div class="api-changelog-filterbar">
       <div class="api-changelog-filter-group">
         <span class="api-changelog-filter-label">Type</span>
-        {{ range $key, $meta := $typeMeta }}
+        {{ range $key := $typeOrder }}
+          {{ $meta := index $typeMeta $key }}
           {{ $count := len (where $allEntries "type" $key) }}
           <button type="button"
             class="api-changelog-chip api-changelog-chip--type is-active"
