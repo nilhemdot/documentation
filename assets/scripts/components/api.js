@@ -171,31 +171,306 @@ if (dataVersionToggles.length) {
     });
 }
 
+// Date-based per-operation API version control (x-datadog-api-versioning)
+function apiVersionStorageKey(operationId) {
+    return `api-version-override:${operationId}`;
+}
+
+const API_GLOBAL_VERSION_STORAGE_KEY = 'api-global-version';
+
+function resolveVersionFromGlobal(versionsCsv, global) {
+    const versions = versionsCsv.split(',').filter(Boolean);
+    let resolved = versions[0];
+    versions.forEach((v) => {
+        if (v <= global) resolved = v;
+    });
+    return resolved;
+}
+
+function daysUntil(dateStr) {
+    if (!dateStr) return null;
+    const msPerDay = 24 * 60 * 60 * 1000;
+    return Math.round((new Date(dateStr) - new Date()) / msPerDay);
+}
+
+// Reads a version's { deprecated, eol } off the block's data-version-meta
+// JSON blob and derives escalation state: `eolPast`/`eolSoon` (within 90
+// days) combine into `urgent`, which pushes the banner from amber to red.
+function getVersionLifecycle(block, version) {
+    let meta = {};
+    try {
+        meta = JSON.parse(block.dataset.versionMeta || '{}');
+    } catch (err) {
+        meta = {};
+    }
+    const entry = meta[version] || {};
+    const remaining = daysUntil(entry.eol);
+    const eolPast = remaining !== null && remaining < 0;
+    const eolSoon = remaining !== null && remaining >= 0 && remaining <= 90;
+    return {
+        deprecated: !!entry.deprecated,
+        eol: entry.eol || '',
+        eolPast,
+        urgent: eolPast || eolSoon,
+    };
+}
+
+const apiVersionBlocks = document.querySelectorAll('.api-version-block');
+const apiGlobalVersionToggle = document.querySelector('.js-api-global-version-toggle');
+const apiGlobalVersionCurrent = document.querySelector('.js-api-global-version-current');
+
+function getGlobalVersion() {
+    if (apiGlobalVersionToggle) return apiGlobalVersionToggle.dataset.value || null;
+    try {
+        return window.localStorage.getItem(API_GLOBAL_VERSION_STORAGE_KEY);
+    } catch (err) {
+        return null;
+    }
+}
+
+function setGlobalVersionButton(version) {
+    if (apiGlobalVersionToggle) apiGlobalVersionToggle.dataset.value = version;
+    if (apiGlobalVersionCurrent) apiGlobalVersionCurrent.textContent = version;
+    document.querySelectorAll('.js-api-global-version-item').forEach((item) => {
+        item.classList.toggle('active', item.dataset.value === version);
+    });
+}
+
+// Applies `version` as the resolved version for an operation and updates
+// every piece of UI that reflects it: the chip, the dropdown selection, the
+// status caption, the context banner, and the underlying versioned panes /
+// curl header.
+function applyApiVersion(operationId, version, isOverride) {
+    const block = document.querySelector(`.api-version-block[data-operation-id="${operationId}"]`);
+    if (!block) return;
+    const { latestVersion } = block.dataset;
+    const isLatest = version === latestVersion;
+    const lifecycle = getVersionLifecycle(block, version);
+
+    const label = block.querySelector('.js-api-version-label');
+    if (label) label.textContent = version;
+
+    const dot = block.querySelector('.js-api-version-dot');
+    if (dot) {
+        dot.classList.toggle('api-version-dot-green', isLatest);
+        dot.classList.toggle('api-version-dot-amber', !isLatest);
+    }
+
+    const chipPill = block.querySelector('.js-api-version-chip-pill');
+    if (chipPill) {
+        chipPill.classList.toggle('d-none', !lifecycle.deprecated);
+        chipPill.classList.toggle('is-urgent', lifecycle.urgent);
+        chipPill.textContent = lifecycle.eolPast ? 'End of life' : 'Deprecated';
+    }
+
+    const toggle = block.querySelector('.js-api-version-toggle');
+    if (toggle) {
+        toggle.classList.toggle('is-overridden', isOverride);
+        toggle.classList.toggle('is-deprecated', lifecycle.deprecated);
+    }
+
+    block.querySelectorAll('.js-api-version-item').forEach((item) => {
+        const selected = item.dataset.apiDateVersion === version;
+        item.classList.toggle('active', selected);
+        const check = item.querySelector('.js-api-version-check');
+        if (check) check.classList.toggle('d-none', !selected);
+    });
+
+    const followMenuItem = block.querySelector('.js-api-version-follow-menu');
+    if (followMenuItem) {
+        followMenuItem.classList.toggle('active', !isOverride);
+        const followCheck = followMenuItem.querySelector('.js-api-version-follow-check');
+        if (followCheck) followCheck.classList.toggle('d-none', isOverride);
+    }
+
+    const captionText = block.querySelector('.js-api-version-caption-text');
+    if (captionText) {
+        captionText.textContent = isOverride ? 'Overridden for this operation' : 'Following global';
+        captionText.classList.toggle('is-overridden', isOverride);
+    }
+
+    const context = block.querySelector('.js-api-version-context');
+    if (context) {
+        context.classList.toggle('is-overridden', isOverride && !lifecycle.deprecated);
+        context.classList.toggle('is-deprecated', lifecycle.deprecated);
+        context.classList.toggle('is-urgent', lifecycle.deprecated && lifecycle.urgent);
+        const text = context.querySelector('.js-api-version-context-text');
+        const global = getGlobalVersion() || version;
+        if (text) {
+            if (lifecycle.deprecated) {
+                const eolText = lifecycle.eol ? ` on ${lifecycle.eol}` : '';
+                text.textContent = lifecycle.eolPast
+                    ? `This version reached end-of-life${eolText} and may stop working. Migrate to ${latestVersion} as soon as possible.`
+                    : `This version is deprecated and reaches end-of-life${eolText}. Migrate to ${latestVersion} before then.`;
+            } else if (isOverride && version === global) {
+                text.textContent = `Pinned to the global version (${global}) — won't move if the global version changes.`;
+            } else if (isOverride) {
+                text.textContent = `Pinned to ${version} for this operation.`;
+            } else {
+                text.textContent = `Following global version (${global}).`;
+            }
+        }
+        const migrateButton = context.querySelector('.js-api-version-migrate');
+        if (migrateButton) migrateButton.classList.toggle('d-none', !lifecycle.deprecated || version === latestVersion);
+        const infoIcon = context.querySelector('.js-api-version-context-icon-info');
+        const warningIcon = context.querySelector('.js-api-version-context-icon-warning');
+        if (infoIcon) infoIcon.classList.toggle('d-none', lifecycle.deprecated);
+        if (warningIcon) warningIcon.classList.toggle('d-none', !lifecycle.deprecated);
+    }
+
+    document.querySelectorAll(`.api-versioned-pane[data-operation-id="${operationId}"]`).forEach((pane) => {
+        pane.classList.toggle('d-none', pane.dataset.apiDateVersion !== version);
+    });
+    document.querySelectorAll(`.api-version-header-value[data-operation-id="${operationId}"]`).forEach((el) => {
+        el.textContent = version;
+    });
+}
+
+if (apiVersionBlocks.length || apiGlobalVersionToggle) {
+    let storedGlobal = null;
+    try {
+        storedGlobal = window.localStorage.getItem(API_GLOBAL_VERSION_STORAGE_KEY);
+    } catch (err) {
+        storedGlobal = null;
+    }
+    if (apiGlobalVersionToggle
+        && storedGlobal
+        && document.querySelector(`.js-api-global-version-item[data-value="${storedGlobal}"]`)) {
+        setGlobalVersionButton(storedGlobal);
+    }
+
+    const initGlobal = getGlobalVersion();
+
+    apiVersionBlocks.forEach((block) => {
+        const { operationId, versions } = block.dataset;
+        if (!versions) return;
+        let override = null;
+        try {
+            override = window.localStorage.getItem(apiVersionStorageKey(operationId));
+        } catch (err) {
+            override = null;
+        }
+        if (override && versions.split(',').includes(override)) {
+            applyApiVersion(operationId, override, true);
+        } else if (initGlobal) {
+            applyApiVersion(operationId, resolveVersionFromGlobal(versions, initGlobal), false);
+        }
+    });
+
+    if (apiGlobalVersionToggle) {
+        // Changing the global baseline recomputes every operation that's still
+        // following it. Operations with their own override keep it — matching
+        // the design mock, only "Follow global" clears an override.
+        document.addEventListener('click', (e) => {
+            const item = e.target.closest('.js-api-global-version-item');
+            if (!item) return;
+            e.preventDefault();
+            const global = item.dataset.value;
+            setGlobalVersionButton(global);
+            try {
+                window.localStorage.setItem(API_GLOBAL_VERSION_STORAGE_KEY, global);
+            } catch (err) {
+                // ignore storage errors (e.g. private browsing)
+            }
+            apiVersionBlocks.forEach((block) => {
+                const { operationId, versions } = block.dataset;
+                if (!versions) return;
+                let override = null;
+                try {
+                    override = window.localStorage.getItem(apiVersionStorageKey(operationId));
+                } catch (err) {
+                    override = null;
+                }
+                if (!override) {
+                    applyApiVersion(operationId, resolveVersionFromGlobal(versions, global), false);
+                }
+            });
+        });
+    }
+
+    // Dropdown open/close is handled by Bootstrap's own dropdown component
+    // (data-bs-toggle="dropdown"), same as the sidebar's global selector and
+    // the site's language/region picker — only selection needs custom wiring.
+    document.addEventListener('click', (e) => {
+        const item = e.target.closest('.js-api-version-item');
+        if (item) {
+            e.preventDefault();
+            const { operationId, apiDateVersion: version } = item.dataset;
+            applyApiVersion(operationId, version, true);
+            try {
+                window.localStorage.setItem(apiVersionStorageKey(operationId), version);
+            } catch (err) {
+                // ignore storage errors (e.g. private browsing)
+            }
+            return;
+        }
+
+        const follow = e.target.closest('.js-api-version-follow-menu');
+        if (follow) {
+            e.preventDefault();
+            const { operationId } = follow.dataset;
+            const block = follow.closest('.api-version-block');
+            const versions = block && block.dataset.versions;
+            const global = getGlobalVersion();
+            if (versions && global) {
+                applyApiVersion(operationId, resolveVersionFromGlobal(versions, global), false);
+            }
+            try {
+                window.localStorage.removeItem(apiVersionStorageKey(operationId));
+            } catch (err) {
+                // ignore storage errors
+            }
+            return;
+        }
+
+        const migrate = e.target.closest('.js-api-version-migrate');
+        if (migrate) {
+            e.preventDefault();
+            const { operationId } = migrate.dataset;
+            const block = migrate.closest('.api-version-block');
+            const latest = block && block.dataset.latestVersion;
+            if (latest) {
+                applyApiVersion(operationId, latest, true);
+                try {
+                    window.localStorage.setItem(apiVersionStorageKey(operationId), latest);
+                } catch (err) {
+                    // ignore storage errors (e.g. private browsing)
+                }
+            }
+        }
+    });
+}
+
 // API changelog filter bar (/api/changelog)
 const changelogRoot = document.querySelector('.api-changelog');
 
 if (changelogRoot) {
-    const typeChips = changelogRoot.querySelectorAll('[data-changelog-type]');
-    const tagChips = changelogRoot.querySelectorAll('[data-changelog-tag]');
+    const filterTabs = changelogRoot.querySelectorAll('[data-changelog-filter]');
+    const productSelect = document.getElementById('api-changelog-product-filter');
+    const versionSelect = document.getElementById('api-changelog-version-filter');
     const versionSections = changelogRoot.querySelectorAll('.api-changelog-version');
     const shownCountEl = document.getElementById('api-changelog-shown-count');
     const versionCountEl = document.getElementById('api-changelog-version-count');
     const clearButtons = document.querySelectorAll('#api-changelog-clear-filters, [data-changelog-reset]');
     const emptyState = document.getElementById('api-changelog-empty-state');
 
-    const activeTypes = new Set([...typeChips].map((chip) => chip.dataset.changelogType));
-    let activeTag = 'all';
+    let activeBucket = 'all';
+    let activeProduct = 'all';
+    let activeVersionFloor = 'all';
 
     function applyChangelogFilters() {
         let shownCount = 0;
         let shownVersionCount = 0;
 
         versionSections.forEach((section) => {
+            const versionHidden = activeVersionFloor !== 'all' && section.dataset.version < activeVersionFloor;
             let visibleInSection = 0;
             let breakingInSection = 0;
 
             section.querySelectorAll('.api-changelog-entry').forEach((entry) => {
-                const matches = activeTypes.has(entry.dataset.type) && (activeTag === 'all' || entry.dataset.tag === activeTag);
+                const matches = !versionHidden
+                    && (activeBucket === 'all' || entry.dataset.bucket === activeBucket)
+                    && (activeProduct === 'all' || entry.dataset.tag === activeProduct);
                 entry.classList.toggle('d-none', !matches);
 
                 if (matches) {
@@ -220,42 +495,42 @@ if (changelogRoot) {
         if (versionCountEl) versionCountEl.textContent = shownVersionCount;
         if (emptyState) emptyState.classList.toggle('d-none', shownCount !== 0);
 
-        const isFiltered = activeTag !== 'all' || activeTypes.size !== typeChips.length;
+        const isFiltered = activeBucket !== 'all' || activeProduct !== 'all' || activeVersionFloor !== 'all';
         clearButtons.forEach((button) => {
             if (button.id === 'api-changelog-clear-filters') button.classList.toggle('d-none', !isFiltered);
         });
     }
 
-    typeChips.forEach((chip) => {
-        chip.addEventListener('click', () => {
-            const type = chip.dataset.changelogType;
-            if (activeTypes.has(type)) {
-                activeTypes.delete(type);
-            } else {
-                activeTypes.add(type);
-            }
-            chip.classList.toggle('is-active');
+    filterTabs.forEach((tab) => {
+        tab.addEventListener('click', () => {
+            activeBucket = tab.dataset.changelogFilter;
+            filterTabs.forEach((t) => t.classList.toggle('is-active', t === tab));
             applyChangelogFilters();
         });
     });
 
-    tagChips.forEach((chip) => {
-        chip.addEventListener('click', () => {
-            activeTag = chip.dataset.changelogTag;
-            tagChips.forEach((c) => c.classList.toggle('is-active', c === chip));
+    if (productSelect) {
+        productSelect.addEventListener('change', () => {
+            activeProduct = productSelect.value;
             applyChangelogFilters();
         });
-    });
+    }
+
+    if (versionSelect) {
+        versionSelect.addEventListener('change', () => {
+            activeVersionFloor = versionSelect.value;
+            applyChangelogFilters();
+        });
+    }
 
     clearButtons.forEach((button) => {
         button.addEventListener('click', () => {
-            activeTypes.clear();
-            typeChips.forEach((chip) => {
-                activeTypes.add(chip.dataset.changelogType);
-                chip.classList.add('is-active');
-            });
-            activeTag = 'all';
-            tagChips.forEach((chip) => chip.classList.toggle('is-active', chip.dataset.changelogTag === 'all'));
+            activeBucket = 'all';
+            activeProduct = 'all';
+            activeVersionFloor = 'all';
+            filterTabs.forEach((t) => t.classList.toggle('is-active', t.dataset.changelogFilter === 'all'));
+            if (productSelect) productSelect.value = 'all';
+            if (versionSelect) versionSelect.value = 'all';
             applyChangelogFilters();
         });
     });

@@ -3,6 +3,9 @@
 # extension in the OpenAPI spec rather than hand-authored here.
 versions:
   - date: "2026-09-01"
+    why_upgrade: >-
+      Removes the deprecated monitor `notify_no_data` boolean and adds ordered log search, at
+      the cost of one breaking change for existing monitor-update integrations.
     entries:
       - type: breaking
         tag: Monitors
@@ -26,6 +29,9 @@ versions:
           `is_read_only` is deprecated in favor of `restricted_roles`. It continues to work but
           will be removed in a future version.
   - date: "2026-08-01"
+    why_upgrade: >-
+      Renames the incident `state` enum and adds bulk metric tag configuration plus
+      suppression details on detection rules. Update stored incident state values before adopting.
     entries:
       - type: breaking
         tag: Incidents
@@ -49,6 +55,9 @@ versions:
           Detection rule responses now include a `suppressions` field describing exclusion
           queries applied to the rule.
   - date: "2026-07-01"
+    why_upgrade: >-
+      Nests dashboard widgets under `attributes.widgets` to align with the v2 resource format,
+      and lets monitor edit permissions be scoped to specific roles at creation time.
     entries:
       - type: breaking
         tag: Dashboards
@@ -73,6 +82,9 @@ versions:
           to specific roles at creation time.
   - date: "2026-06-01"
     default: true
+    why_upgrade: >-
+      Establishes the stable baseline for date-based versioning, including the `service_account`
+      user type for programmatic access not tied to an individual person.
     entries:
       - type: addition
         tag: Users
