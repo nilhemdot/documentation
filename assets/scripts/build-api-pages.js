@@ -272,7 +272,11 @@ const createResources = (apiYaml, deref, apiVersion) => {
           const requestSchema = getSchema(action.requestBody.content);
           const requestJson = filterExampleJson("request", requestSchema);
           const requestCurlJson = filterExampleJson("curl", requestSchema);
-          const requestHtml = schemaTable("request", requestSchema);
+          // A date-versioned schema enumerates one full variant per version (see
+          // below) — the baseline table would otherwise render every variant's
+          // copy of any large shared subtree (e.g. WidgetDefinition) in full,
+          // multiplying its already-substantial size by the version count.
+          const requestHtml = schemaTable("request", (requestSchema && requestSchema["x-datadog-api-versioned"]) ? pruneLargeOneOf(requestSchema) : requestSchema);
           request = {"json_curl": requestCurlJson, "json": requestJson, "html": requestHtml};
           if (requestSchema && requestSchema["x-datadog-api-versioned"] && Array.isArray(requestSchema.oneOf)) {
             const pruned = requestSchema.oneOf.map((variant) => pruneLargeOneOf(variant));
@@ -293,7 +297,7 @@ const createResources = (apiYaml, deref, apiVersion) => {
             if(response.content) {
               const responseSchema = getSchema(response.content);
               const responseJson = filterExampleJson("response", responseSchema);
-              const responseHtml = schemaTable("response", responseSchema);
+              const responseHtml = schemaTable("response", (responseSchema && responseSchema["x-datadog-api-versioned"]) ? pruneLargeOneOf(responseSchema) : responseSchema);
               const responseEntry = {"json": responseJson, "html": responseHtml};
               // Date-based API versioning: when the schema is marked versioned with a oneOf,
               // render each variant separately so the schema + example panes can swap with the dropdown.
