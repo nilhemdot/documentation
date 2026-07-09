@@ -303,7 +303,7 @@ function applyApiVersion(operationId, version, isOverride) {
                     ? `This version reached end-of-life${eolText} and may stop working. Migrate to ${latestVersion} as soon as possible.`
                     : `This version is deprecated and reaches end-of-life${eolText}. Migrate to ${latestVersion} before then.`;
             } else if (isOverride && version === global) {
-                text.textContent = `Pinned to the global version (${global}) — won't move if the global version changes.`;
+                text.textContent = `Pinned to the global version (${global}) — does not move if the global version changes.`;
             } else if (isOverride) {
                 text.textContent = `Pinned to ${version} for this operation.`;
             } else {

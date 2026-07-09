@@ -13,7 +13,7 @@ versions:
         path: /api/v1/monitor/{id}
         description: >-
           Removed the deprecated `notify_no_data` boolean. Use `no_data_timeframe` to control
-          no-data alerting; requests sending `notify_no_data` now return a 400.
+          no-data alerting; requests sending `notify_no_data` return a 400.
       - type: addition
         tag: Logs
         method: post
@@ -27,7 +27,7 @@ versions:
         path: /api/v1/dashboard/{id}
         description: >-
           `is_read_only` is deprecated in favor of `restricted_roles`. It continues to work but
-          will be removed in a future version.
+          is scheduled for removal in a future version.
   - date: "2026-08-01"
     why_upgrade: >-
       Renames the incident `state` enum and adds bulk metric tag configuration plus
@@ -38,7 +38,7 @@ versions:
         method: patch
         path: /api/v2/incidents/{id}
         description: >-
-          The `state` enum was renamed: `active` is now `declared` and `stable` is now `resolved`.
+          The `state` enum was renamed: `active` becomes `declared` and `stable` becomes `resolved`.
           Update stored values before adopting this version.
       - type: addition
         tag: Metrics
@@ -52,7 +52,7 @@ versions:
         method: get
         path: /api/v2/security_monitoring/rules
         description: >-
-          Detection rule responses now include a `suppressions` field describing exclusion
+          Detection rule responses include a `suppressions` field describing exclusion
           queries applied to the rule.
   - date: "2026-07-01"
     why_upgrade: >-
@@ -64,7 +64,7 @@ versions:
         method: get
         path: /api/v1/dashboard/{id}
         description: >-
-          The response envelope changed — widgets are now nested under `attributes.widgets`
+          The response envelope changed — widgets are nested under `attributes.widgets`
           rather than at the top level, aligning with the v2 resource format.
       - type: deprecation
         tag: APM

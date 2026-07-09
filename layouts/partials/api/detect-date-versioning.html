@@ -30,10 +30,13 @@
   {{ range . }}
     {{ if eq .Identifier $tagSlug }}
       {{ $tagName = .Name }}
-    {{ end }}
-    {{ range .Children }}
-      {{ if eq .Identifier $identifier }}
-        {{ $menuEntry = . }}
+      {{/* The operation's menu entry (identifier "{tag}-{endpoint}") is always a
+           child of its own tag, so only walk this tag's children instead of every
+           tag's — on non-operation pages nothing matches and no children are walked. */}}
+      {{ range .Children }}
+        {{ if eq .Identifier $identifier }}
+          {{ $menuEntry = . }}
+        {{ end }}
       {{ end }}
     {{ end }}
   {{ end }}

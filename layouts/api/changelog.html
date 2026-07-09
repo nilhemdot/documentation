@@ -1,6 +1,9 @@
 {{ define "api-main" }}
 
 {{ $versions := .Site.Data.api.changelog.versions | default (slice) }}
+{{/* Sort newest-first so the "Recommended" badge (first entry), the timeline order,
+     and the version-range filter don't depend on changelog.yaml being hand-ordered. */}}
+{{ $versions = sort $versions "date" "desc" }}
 
 {{ $typeMeta := dict
   "breaking"    (dict "label" "Breaking"    "color" "danger")
@@ -117,7 +120,9 @@
 
           <div class="api-changelog-entries">
             {{ range .entries }}
-              {{ $meta := index $typeMeta .type }}
+              {{/* Fall back to a labeled, neutral pill for any unrecognized/missing type
+                   instead of rendering an empty "bg-" class with no label. */}}
+              {{ $meta := index $typeMeta .type | default (dict "label" (.type | default "Change") "color" "info") }}
               <article class="api-changelog-entry" data-type="{{ .type }}" data-bucket="{{ .type }}" data-tag="{{ .tag }}">
                 <span class="api-changelog-pill bg-{{ $meta.color }}">{{ $meta.label }}</span>
                 <div class="api-changelog-entry-body">

@@ -819,13 +819,13 @@ $ddpurple: #632ca6;
     font-weight: 600;
 }
 
-// Note: Bootstrap's .badge base class (padding/radius/line-height) isn't
-// imported anywhere in this codebase — only the .badge-white color modifier
-// is (see whats-next/nextlink). So the pill shape is defined here directly;
-// only the semantic color varies per state.
-.api-version-chip-pill {
+// Shared pill geometry for the version chip/tag/marker pills below. Bootstrap's
+// .badge base class (padding/radius/line-height) isn't imported anywhere in this
+// codebase — only the .badge-white color modifier is (see whats-next/nextlink) —
+// so the pill shape is defined here once; each pill sets only its own margin and
+// semantic color.
+%api-pill-shape {
     display: inline-block;
-    margin-left: 0.5rem;
     padding: 0.15rem 0.5rem;
     font-size: 0.6875rem;
     font-weight: 600;
@@ -833,6 +833,11 @@ $ddpurple: #632ca6;
     white-space: nowrap;
     vertical-align: middle;
     border-radius: 50rem;
+}
+
+.api-version-chip-pill {
+    @extend %api-pill-shape;
+    margin-left: 0.5rem;
     color: $brand-warning;
     background: rgba($brand-warning, 0.14);
 
@@ -922,19 +927,11 @@ $ddpurple: #632ca6;
     font-family: monospace;
 }
 
-// Same pill shape as .api-version-chip-pill above (see note there re: no
-// real Bootstrap .badge base to inherit from), reused for dropdown-row tags
+// Same pill shape as .api-version-chip-pill above, reused for dropdown-row tags
 // — only the semantic color is custom.
 .api-version-tag {
-    display: inline-block;
+    @extend %api-pill-shape;
     margin-left: 0.5rem;
-    padding: 0.15rem 0.5rem;
-    font-size: 0.6875rem;
-    font-weight: 600;
-    line-height: 1;
-    white-space: nowrap;
-    vertical-align: middle;
-    border-radius: 50rem;
 
     &.api-version-tag-latest {
         color: $brand-success;
@@ -1055,17 +1052,10 @@ $ddpurple: #632ca6;
 
 // D5: schema table row markers for fields added/removed between date-versioned
 // variants (see rowRecursive's prevData diffing in build-api-pages.js). Same
-// pill shape as .api-version-chip-pill (see note there); only color is custom.
+// pill shape as .api-version-chip-pill; only margin and color are custom.
 .schema-change-marker {
-    display: inline-block;
+    @extend %api-pill-shape;
     margin-left: 0.375rem;
-    padding: 0.15rem 0.5rem;
-    font-size: 0.6875rem;
-    font-weight: 600;
-    line-height: 1;
-    white-space: nowrap;
-    vertical-align: middle;
-    border-radius: 50rem;
 }
 
 .schema-change-marker-new {

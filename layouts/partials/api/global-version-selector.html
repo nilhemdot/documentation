@@ -10,15 +10,21 @@
   than a bare native <select>.
 
   Params:
-    versions - slice of dicts: {date string, isBase bool}, sorted oldest -> newest
+    versions    - slice of dicts: {date string, isBase bool}, sorted oldest -> newest
+    baseVersion - string, the default version resolved by detect-date-versioning.html
 */}}
 {{ $versions := .versions }}
 {{ $count    := len $versions }}
 {{ $latest   := "" }}
 {{ range $versions }}{{ $latest = .date }}{{ end }}
-{{ $selected := "" }}
-{{ range $versions }}{{ if .isBase }}{{ $selected = .date }}{{ end }}{{ end }}
-{{ if eq $selected "" }}{{ $selected = $latest }}{{ end }}
+{{/* Use the baseVersion resolved once in detect-date-versioning.html as the single
+     source of truth, so the sidebar default matches the per-operation chip and the
+     server-rendered visible pane. Falling back here to $latest (while detect falls
+     back to the oldest date) would desync the default selection when no version is
+     marked base. */}}
+{{ $selected := .baseVersion | default "" }}
+{{ if eq $selected "" }}{{ range $versions }}{{ if .isBase }}{{ $selected = .date }}{{ end }}{{ end }}{{ end }}
+{{ if and (eq $selected "") (gt $count 0) }}{{ $selected = (index $versions 0).date }}{{ end }}
 
 {{ if gt $count 0 }}
 <div class="api-sidenav-version">

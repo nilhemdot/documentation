@@ -1594,7 +1594,7 @@ components:
     Dashboard_Version20260701:
       description: |-
         Dashboard object for API version 2026-07-01.
-        The widget `layout` field has been removed. Widgets now use the required `position` field
+        The widget `layout` field has been removed. Widgets use the required `position` field
         with `column`, `row`, `span_columns`, and `span_rows` for named grid-slot positioning.
       example:
         id: "abc-123-def"
@@ -27933,7 +27933,7 @@ components:
     Widget_Version20260701:
       description: |-
         Widget object for API version 2026-07-01.
-        The `layout` field is removed. Widgets now require the `position` field using named
+        The `layout` field is removed. Widgets require the `position` field using named
         grid-slot fields: `column`, `row`, `span_columns`, and `span_rows`.
         Requests that include a `layout` field return a validation error.
       properties:

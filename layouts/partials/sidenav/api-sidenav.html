@@ -7,7 +7,7 @@
             </a>
 
             {{ if .Scratch.Get "isDateVersioned" }}
-                {{ partial "api/global-version-selector.html" (dict "versions" (.Scratch.Get "apiVersionsList")) }}
+                {{ partial "api/global-version-selector.html" (dict "versions" (.Scratch.Get "apiVersionsList") "baseVersion" (.Scratch.Get "baseVersion")) }}
             {{ end }}
 
             {{ $ContentBaseName := "" }}

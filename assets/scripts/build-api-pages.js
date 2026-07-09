@@ -276,6 +276,11 @@ const createResources = (apiYaml, deref, apiVersion) => {
           request = {"json_curl": requestCurlJson, "json": requestJson, "html": requestHtml};
           if (requestSchema && requestSchema["x-datadog-api-versioned"] && Array.isArray(requestSchema.oneOf)) {
             const pruned = requestSchema.oneOf.map((variant) => pruneLargeOneOf(variant));
+            // Contract: the oneOf must enumerate exactly one variant per declared
+            // version, oldest -> newest, matching versionDates. Pairing is positional
+            // (variant idx <-> versionDates[idx]); a mismatch silently mislabels or
+            // blanks version panes downstream, so fail loudly at build time instead.
+            assertVersionAlignment(action.operationId, "request", pruned.length, versionDates);
             request.versionedHtml = pruned.map((variant, idx) => schemaTable("request", variant, false, pruned[idx - 1], versionDates[idx]));
             request.versionedJson = pruned.map((variant) => filterExampleJson("request", variant));
           }
@@ -295,6 +300,9 @@ const createResources = (apiYaml, deref, apiVersion) => {
               // Large shared oneOf subtrees (e.g. WidgetDefinition) are stubbed so the file doesn't blow up.
               if (responseSchema && responseSchema["x-datadog-api-versioned"] && Array.isArray(responseSchema.oneOf)) {
                 const pruned = responseSchema.oneOf.map((variant) => pruneLargeOneOf(variant));
+                // See request path above: positional variant<->version pairing requires
+                // one oneOf variant per declared version (oldest -> newest).
+                assertVersionAlignment(action.operationId, `response ${responseCode}`, pruned.length, versionDates);
                 responseEntry.versionedHtml = pruned.map((variant, idx) => schemaTable("response", variant, false, pruned[idx - 1], versionDates[idx]));
                 responseEntry.versionedJson = pruned.map((variant) => filterExampleJson("response", variant));
               }
@@ -727,8 +735,9 @@ const filterExampleJson = (actionType, data) => {
   const requiredKeys = getInitialRequiredData(data);
 
   // just return the example in additionalProperties cases with example
-  // just return the example if theres a top-level example (any actionType)
-  if(data.additionalProperties && data.example || data.example) {
+  // just return the example if theres a top-level example and its response
+  // (requests/curl still build from the schema so filterJson can strip readOnly fields)
+  if(data.additionalProperties && data.example || data.example && actionType === 'response') {
     return data.example;
   }
 
@@ -1008,11 +1017,35 @@ const rowRecursive = (tableType, data, isNested, requiredFields=[], level = 0, p
 };
 
 /**
+ * Warns at build time when a date-versioned schema does not enumerate exactly one
+ * oneOf variant per declared version. The variant <-> version pairing is positional
+ * (see createResources), so a mismatch silently mislabels or blanks version panes.
+ * @param {string} operationId
+ * @param {string} schemaKind - e.g. "request" or "response 200"
+ * @param {number} variantCount - number of oneOf variants
+ * @param {string[]} versionDates - sorted list of declared version dates
+ */
+const assertVersionAlignment = (operationId, schemaKind, variantCount, versionDates) => {
+  if (variantCount !== versionDates.length) {
+    console.warn(
+      `WARNING: date-versioned ${schemaKind} schema for ${operationId} has ${variantCount} ` +
+      `oneOf variant(s) but ${versionDates.length} declared version(s) ` +
+      `(${versionDates.join(", ")}). Variant<->version pairing is positional; ` +
+      `enumerate one oneOf variant per version, oldest -> newest, or panes will be mislabeled/blank.`
+    );
+  }
+};
+
+/**
  * Deep-clone a schema while replacing any oneOf whose length exceeds a threshold
  * with a single-line stub. Used when pre-rendering versioned schema variants to
- * avoid re-expanding large shared subtrees (e.g. WidgetDefinition) per variant.
+ * avoid re-expanding large shared subtrees (e.g. WidgetDefinition, ~40 variants)
+ * per version. The threshold is set above the size of any legitimate per-field
+ * union so real polymorphic fields still render in full — only the big shared
+ * component trees get stubbed. (Non-versioned tables expand unions up to
+ * oneOfLimit=50; this is deliberately lower to catch the shared trees.)
  */
-const pruneLargeOneOf = (schema, threshold = 5, depth = 0) => {
+const pruneLargeOneOf = (schema, threshold = 25, depth = 0) => {
   if (depth > 20) return schema;
   if (!schema || typeof schema !== 'object') return schema;
   if (Array.isArray(schema)) return schema.map((s) => pruneLargeOneOf(s, threshold, depth + 1));
@@ -1038,8 +1071,11 @@ const pruneLargeOneOf = (schema, threshold = 5, depth = 0) => {
 const resolveInitialData = (data) => {
   if (!data || typeof data !== 'object') return null;
   if (data.type === 'array') {
+    // A pruned oneOf stub or malformed variant can be type:'array' with no items;
+    // bail out rather than deref undefined (this runs for prevData too now).
+    if (!data.items || typeof data.items !== 'object') return null;
     if (data.items.type === 'array') {
-      return data.items.items.properties;
+      return data.items.items && data.items.items.properties;
     } else if (data.items.properties) {
       return data.items.properties;
     }
@@ -1070,7 +1106,7 @@ const resolveInitialData = (data) => {
 const schemaTable = (tableType, data, skipAnyKeys = false, prevData = null, versionLabel = '') => {
   const initialData = resolveInitialData(data);
   const prevInitialData = resolveInitialData(prevData);
-  const extraClasses = (initialData) ? (data.type === 'array' && !data.items.properties && data.items.type !== 'array' ? 'hide-table' : '') : 'hide-table';
+  const extraClasses = (initialData) ? (data.type === 'array' && data.items && !data.items.properties && data.items.type !== 'array' ? 'hide-table' : '') : 'hide-table';
   const emptyRow = `
     <div class="row">
       <div class="col-12 first-column">
