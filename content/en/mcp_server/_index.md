@@ -113,7 +113,7 @@ The Datadog MCP Server is optimized to provide responses in a way that AI agents
 
 ## Track tool calls in Audit Trail
 
-You can view information about calls made by MCP Server tools in Datadog's [Audit Trail][16]. Search or filter by the event name `MCP Server`.
+You can view information about calls made by MCP Server tools in Datadog' s [Audit Trail][16]. Search or filter by the event name `MCP Server`.
 
 ## Feedback
 
